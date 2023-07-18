@@ -1,5 +1,6 @@
 import re
 import sqlite3
+from collections import defaultdict
 
 # Connecting to ChatStorage.sqlite database
 conn_chatstorage = sqlite3.connect('ChatStorage.sqlite')
@@ -94,10 +95,10 @@ filtered_values = []
 
 for value in values_not_in_chatstorage:
     if value.endswith(".thumb"):
-        base_value = value[:-6]  # Ottieni il nome di base del file senza l'estensione .thumb
+        base_value = value[:-6]  # Get the base file name without the .thumb extension
         duplicate_with_different_extension = False
 
-        # Verifica se esiste un duplicato con estensione diversa tra gli elementi di values_not_in_chatstorage
+        # Check if there is a duplicate with a different extension among the elements of values_not_in_chatstorage
         for other_value in values_not_in_chatstorage:
             if other_value != value and other_value.startswith(base_value) and not other_value.endswith(".thumb"):
                 duplicate_with_different_extension = True
@@ -122,11 +123,26 @@ for value in values_not_in_chatstorage:
         number = match.group()
         number_count[number] = number_count.get(number, 0) + 1
 
+# Define a dictionary to store the count of files by extension for each phone number
+file_count_by_extension = defaultdict(lambda: defaultdict(int))
+
+for number in number_count:
+    for value in values_not_in_chatstorage:
+        if number in value:
+            extension = value.split(".")[-1]  # Extract the file extension
+            file_count_by_extension[number][extension] += 1
+
 sorted_numbers = sorted(number_count.items(), key=lambda x: (-x[1], str(x[0])))
 
 for number, count in sorted_numbers:
     print("Phone number: +", number, sep="")
     print("Number of deleted messages:", count)
+
+    # Print the number and type of files based on their extensions for the current phone number
+    print("Files by extension:")
+    file_counts = file_count_by_extension[number]
+    for extension, file_count in file_counts.items():
+        print(f"Number of {extension.upper()} files:", file_count)
     print()
 
 
