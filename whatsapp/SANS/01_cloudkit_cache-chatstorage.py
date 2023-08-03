@@ -67,7 +67,26 @@ for value in values_not_in_chatstorage:
         if not has_duplicate_with_different_extension:
             filtered_values.append(value)
 
-# Print the filtered values not present in ChatStorage.sqlite
-for value in sorted(filtered_values):
-    print(value)
+# Connecting to ChatStorage.sqlite database for the thumbpath check
+conn_chatstorage = sqlite3.connect('ChatStorage.sqlite')
+cursor_chatstorage = conn_chatstorage.cursor()
 
+# Query to fetch ZXMPPTHUMBPATH values from ZWAMEDIAITEM
+query_thumbpath = "SELECT ZXMPPTHUMBPATH FROM ZWAMEDIAITEM WHERE ZXMPPTHUMBPATH IS NOT NULL AND ZXMPPTHUMBPATH NOT LIKE '%status%' ORDER BY ZXMPPTHUMBPATH"
+cursor_chatstorage.execute(query_thumbpath)
+
+# Retrieve ZXMPPTHUMBPATH results from ChatStorage.sqlite
+results_thumbpath = cursor_chatstorage.fetchall()
+
+# Close ChatStorage.sqlite database connection
+cursor_chatstorage.close()
+conn_chatstorage.close()
+
+thumbpath_set = set(row[0] for row in results_thumbpath)
+
+# Remove the values that have a match in the thumbpath_set
+final_filtered_values = [value for value in filtered_values if value not in thumbpath_set]
+
+# Print the filtered values not present in ChatStorage.sqlite
+for value in sorted(final_filtered_values):
+    print(value)

@@ -88,29 +88,50 @@ set_chatstorage = set([row[0] for row in results_chatstorage])
 set_cloudkit = set([row[0] for row in results_cloudkit])
 set_new = set([row[0] for row in results_new])
 
+
+
+
+
+
 # Find the values present in cloudkit_cache.db but not in ChatStorage.sqlite
 values_not_in_chatstorage = (set_cloudkit | set_new) - set_chatstorage
 
+# Filter values to exclude those with duplicates and different extensions
 filtered_values = []
-
 for value in values_not_in_chatstorage:
     if value.endswith(".thumb"):
-        base_value = value[:-6]  # Get the base file name without the .thumb extension
-        duplicate_with_different_extension = False
-
-        # Check if there is a duplicate with a different extension among the elements of values_not_in_chatstorage
-        for other_value in values_not_in_chatstorage:
-            if other_value != value and other_value.startswith(base_value) and not other_value.endswith(".thumb"):
-                duplicate_with_different_extension = True
-                break
-
-        if not duplicate_with_different_extension:
+        base_value = value[:-6]
+        has_duplicate_with_different_extension = any(v != value and v.startswith(base_value) and not v.endswith(".thumb") for v in values_not_in_chatstorage if not v.endswith(".thumb"))
+        if not has_duplicate_with_different_extension:
             filtered_values.append(value)
     else:
-        filtered_values.append(value)
+        has_duplicate_with_different_extension = any(v != value and v.startswith(value) and not v.endswith(".thumb") for v in values_not_in_chatstorage if not v.endswith(".thumb"))
+        if not has_duplicate_with_different_extension:
+            filtered_values.append(value)
+
+# Connecting to ChatStorage.sqlite database for the thumbpath check
+conn_chatstorage = sqlite3.connect('ChatStorage.sqlite')
+cursor_chatstorage = conn_chatstorage.cursor()
+
+# Query to fetch ZXMPPTHUMBPATH values from ZWAMEDIAITEM
+query_thumbpath = "SELECT ZXMPPTHUMBPATH FROM ZWAMEDIAITEM"
+cursor_chatstorage.execute(query_thumbpath)
+
+# Retrieve ZXMPPTHUMBPATH results from ChatStorage.sqlite
+results_thumbpath = cursor_chatstorage.fetchall()
+
+# Close ChatStorage.sqlite database connection
+cursor_chatstorage.close()
+conn_chatstorage.close()
+
+thumbpath_set = set(row[0] for row in results_thumbpath)
+
+# Remove the values that have a match in the thumbpath_set
+final_filtered_values = [value for value in filtered_values if value not in thumbpath_set]
+
 
 # Replace values_not_in_chatstorage with the new filtered values
-values_not_in_chatstorage = filtered_values
+values_not_in_chatstorage = final_filtered_values
 
 # Define a regular expression pattern to match 12-13 digit numbers
 number_pattern = r"\b\d{12,13}\b"
